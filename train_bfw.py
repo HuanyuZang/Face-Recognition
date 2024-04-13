@@ -75,6 +75,7 @@ else:
     print('==> Building model..')
 
 if use_cuda:
+    print('==> Using CUDA...')
     net.cuda()
 
 criterion = nn.CrossEntropyLoss()
@@ -139,7 +140,7 @@ def train(epoch):
 Test_acc_list = []
 
 
-def Test(epoch):
+def test(epoch):
     global Test_acc
     global best_Test_acc
     global best_Test_acc_epoch
@@ -184,7 +185,7 @@ def Test(epoch):
 
 for epoch in range(start_epoch, total_epoch):
     train(epoch)
-    Test(epoch)
+    test(epoch)
 
 """
 ------------------ plot figures --------------------
