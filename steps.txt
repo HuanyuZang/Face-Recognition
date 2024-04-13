@@ -1,0 +1,29 @@
+基本信息：
+8个人种+性别，每个人种性别有2500张图，每个人种性别底下有100个identity ID，也就是总共有800个人
+
+思路：
+1. 每个人种性别选出250个做测试集，2500-250个做训练集，预测出人种性别，以及每个identity ID
+看哪个人种性别+身份容易被预测错误
+随机选出的train和test set如下统计：
+number 0 has 800 train_labels and 751 test_labels
+number 1 has 800 train_labels and 744 test_labels
+number 2 has 800 train_labels and 745 test_labels
+number 3 has 800 train_labels and 740 test_labels
+number 4 has 800 train_labels and 734 test_labels
+number 5 has 800 train_labels and 738 test_labels
+number 6 has 800 train_labels and 740 test_labels
+number 7 has 800 train_labels and 734 test_labels
+number 8 has 800 train_labels and 746 test_labels
+number 9 has 800 train_labels and 733 test_labels
+2. 只给出人种性别信息，不给出身份信息，预测出人种性别，看哪个人种性别最容易和其他的人种性别混淆
+3. 对于每个人种性别，训练1次共8次，看哪个人种性别之间长得最相似
+4. 混合每个人种的男女，二值预测男女，看哪个人种里面，男女长得最相似
+
+步骤：
+1. generate 10 json files, each contains random selection train and test sets, each json is like:
+{
+"train": "path1", "path2", ...
+"test": "path_x", "path_xx", ...
+}
+2. read json files 1 by 1, "preprocess_bfw.py", create h5 files
+3.
