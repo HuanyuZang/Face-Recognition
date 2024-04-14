@@ -8,7 +8,7 @@ path = '/Users/h0z058l/Downloads/FER/dataset/BFW/bfw-cropped-aligned/indian_male
 print(count_folders(path))
 
 for i in range(10):
-    with open(f'/Users/h0z058l/Downloads/FER/codes/Face-Recognition/10-folder-selection/select_{i}.json') as f:
+    with open(f'/Users/h0z058l/Downloads/FER/codes/Face-Recognition/BFW/3/10-folder-selection/select_{i}.json') as f:
         data = json.load(f)
     train_labels = set(data['train_label'])
     test_labels = set(data['test_label'])

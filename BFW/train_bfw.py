@@ -12,6 +12,8 @@ import time
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
+local_path = "/Users/h0z058l/Downloads/FER/codes/Face-Recognition/BFW"
+
 parser = argparse.ArgumentParser(description='PyTorch BFW CNN Training')
 parser.add_argument('--model', type=str, default='VGG19', help='CNN architecture')
 parser.add_argument('--dataset', type=str, default='BFW', help='CNN architecture')
@@ -71,12 +73,14 @@ else:
 if use_cuda:
     print('==> Using CUDA...')
     net.cuda()
+else:
+    print('==> No CUDA is available!')
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=opt.lr, momentum=0.9, weight_decay=5e-4)
 
 filename = time.strftime("%m-%d-%H-%M-%S", time.localtime())
-log_path = "/Users/h0z058l/Downloads/FER/codes/Face-Recognition/output/" + f'{filename}.txt'  # 也可以创建一个.doc的word文档
+log_path = f"{local_path}/3/{filename}.txt"
 outputfile = open(log_path, 'w')
 
 Loss_list = []
@@ -124,10 +128,8 @@ def train(epoch):
             print("Loss:", "{:.4e}".format(loss), file=outputfile)
             print(f"Correct_cnt: {correct}", file=outputfile)
         outputfile.flush()
-
         utils.progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
                            % (train_loss / (batch_idx + 1), 100. * correct / total, correct, total))
-
     Train_acc = 100. * correct / total
 
 
@@ -192,7 +194,7 @@ plt.plot(x1, y1, '-')
 plt.title('Train_acc vs. epoches')
 plt.ylabel('Train_acc')
 plt.plot(x1, y1, color='blue', label='Train_acc')
-plt.savefig(f"/Users/h0z058l/Downloads/FER/codes/Face-Recognition/output/Train-acc-{filename}.png")
+plt.savefig(f"{local_path}/3/output/Train-acc-{filename}.png")
 
 x2 = range(0, 10)
 y2 = Loss_list
@@ -202,7 +204,7 @@ plt.title('Train_loss vs. epoches')
 plt.xlabel('Epoch')
 plt.ylabel('Train_loss')
 plt.plot(x2, y2, color='blue')
-plt.savefig(f"/Users/h0z058l/Downloads/FER/codes/Face-Recognition/output/Train-loss-{filename}s.png")
+plt.savefig(f"{local_path}/3/output/Train-loss-{filename}s.png")
 
 x3 = range(0, 10)
 y3 = Test_acc_list
@@ -214,7 +216,7 @@ plt.xlabel('Epoch')
 plt.ylabel('Test_acc')
 plt.plot(x3, y3, color='orange', label='Private_acc')
 plt.legend(loc='lower right')
-plt.savefig(f"/Users/h0z058l/Downloads/FER/codes/Face-Recognition/output/Test-acc-{filename}.png")
+plt.savefig(f"{local_path}/3/output/Test-acc-{filename}.png")
 plt.close()
 
 outputfile.close()

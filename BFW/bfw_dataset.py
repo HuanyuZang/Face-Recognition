@@ -6,8 +6,7 @@ import torch.utils.data as data
 
 
 class BFW(data.Dataset):
-    """`FER2013 Dataset.
-
+    """
     Args:
         train (bool, optional): If True, creates dataset from training set, otherwise
             creates from test set.
@@ -19,7 +18,7 @@ class BFW(data.Dataset):
         self.transform = transform
         self.split = split  # training set or test set
         self.data = h5py.File(
-            '/Users/h0z058l/Downloads/FER/codes/Face-Recognition/BFW/1/data/data_0.h5', 'r', driver='core'
+            '/Users/h0z058l/Downloads/FER/codes/Face-Recognition/BFW/3/data/data_0.h5', 'r', driver='core'
         )
         # now load the picked numpy arrays
         if self.split == 'Training':
