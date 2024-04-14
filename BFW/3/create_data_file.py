@@ -51,11 +51,34 @@ for idx in range(10):
         race_sex_path = os.path.join(img_parent_path, race_sex)
         create_image_to_label_map(race_sex_path)
 
+    train_labels_set = set(train_y)
+    train_labels_list = list(train_labels_set)
+    train_index_to_label_map = {}
+    train_label_to_index_map = {}
+    for train_label_idx, label in enumerate(train_labels_list):
+        train_index_to_label_map[train_label_idx] = label
+        train_label_to_index_map[label] = train_label_idx
+
+    test_labels_set = set(test_y)
+    test_labels_list = list(test_labels_set)
+    test_index_to_label_map = {}
+    test_label_to_index_map = {}
+    for test_label_idx, label in enumerate(test_labels_list):
+        test_index_to_label_map[test_label_idx] = label
+        test_label_to_index_map[label] = test_label_idx
+
     json_dict = {
-        "train_path": train_x, "train_label": train_y, "test_path": test_x, "test_label": test_y
+        "train_path": train_x, "train_label": train_y,
+        "test_path": test_x, "test_label": test_y,
+        "train_idx2label_map": train_index_to_label_map,
+        "train_label2idx_map": train_label_to_index_map,
+        "test_idx2label_map": test_index_to_label_map,
+        "test_label2idx_map": test_label_to_index_map
     }
+
     with open(f"{parent_path}/10-folder-selection/select_{idx}.json", 'w') as f:
         json.dump(json_dict, f)
+
 print("selection finished")
 
 
@@ -71,38 +94,11 @@ for select_idx in range(10):
 
     train_paths = selection["train_path"]
     train_labels = selection["train_label"]
-    train_labels_set = set(train_labels)
-    train_labels_list = list(train_labels_set)
-    train_index_to_label_map = {}
-    train_label_to_index_map = {}
-    for train_label_idx, label in enumerate(train_labels_list):
-        train_index_to_label_map[train_label_idx] = label
-        train_label_to_index_map[label] = train_label_idx
-
+    train_label_to_index_map = selection["train_label2idx_map"]
     test_paths = selection["test_path"]
     test_labels = selection["test_label"]
-    test_labels_set = set(test_labels)
-    test_labels_list = list(test_labels_set)
-    test_index_to_label_map = {}
-    test_label_to_index_map = {}
-    for test_label_idx, label in enumerate(test_labels_list):
-        test_index_to_label_map[test_label_idx] = label
-        test_label_to_index_map[label] = test_label_idx
+    test_label_to_index_map = selection["test_label2idx_map"]
 
-    train_int_labels = []
-    for train_label in train_labels:
-        train_int_labels.append(train_label_to_index_map[train_label])
-    test_int_labels = []
-    for test_label in test_labels:
-        test_int_labels.append(test_label_to_index_map[test_label])
-
-    selection["train_idx2label_map"] = train_index_to_label_map
-    selection["train_label2idx_map"] = train_label_to_index_map
-    selection["test_idx2label_map"] = test_index_to_label_map
-    selection["test_label2idx_map"] = test_label_to_index_map
-    with open(f"{parent_path}/10-folder-selection/select_{select_idx}.json", 'w') as f:
-        json.dump(selection, f)
-    
     for train_path in train_paths:
         train_pixel = skimage.io.imread(train_path)
         resized_image = resize(train_pixel, (108, 124))
@@ -111,6 +107,13 @@ for select_idx in range(10):
         test_pixel = skimage.io.imread(test_path)
         resized_image = resize(test_pixel, (108, 124))
         test_pixels.append(resized_image.tolist())
+
+    train_int_labels = []
+    for train_label in train_labels:
+        train_int_labels.append(train_label_to_index_map[train_label])
+    test_int_labels = []
+    for test_label in test_labels:
+        test_int_labels.append(test_label_to_index_map[test_label])
 
     train_pixels = np.array(train_pixels)
     train_int_labels = np.array(train_int_labels)
