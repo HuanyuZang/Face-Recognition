@@ -159,5 +159,7 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-/data/
-/BFW-VGG19/
+/BFW/1/data/
+/BFW/3/data/
+/BFW/1/BFW-VGG19/
+/BFW/3/BFW-VGG19/
