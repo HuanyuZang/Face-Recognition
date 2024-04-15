@@ -1,6 +1,7 @@
 h5py
 matplotlib
 numpy
+pytz
 scikit-image
 torch
 torchvision

@@ -22,6 +22,11 @@ number 9 has 800 train_labels and 733 test_labels
 4. 不考虑性别，只预测人种，merge每个人种的男女，4个类别
 5. 对于每个人种，二值预测男女，看哪个人种里面，男女长得最相似
 
+1. VGG
+2. ResNet
+3. AlexNet
+4. DenseNet
+
 步骤：
 1. generate 10 json files, each contains random selection train and test sets, each json is like:
 {

@@ -1,50 +1,57 @@
 # 10 crop for data enhancement
-from __future__ import print_function
 import torch.optim as optim
 import numpy as np
 import os
 import argparse
 import utils
-from BFW.bfw_dataset import BFW
+from bfw_dataset import BFW
 from models import *
 import torchvision.transforms as transforms
 import time
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import pytz
+from datetime import datetime
 
 local_path = "/Users/h0z058l/Downloads/FER/codes/Face-Recognition/BFW"
 
 parser = argparse.ArgumentParser(description='PyTorch BFW CNN Training')
 parser.add_argument('--model', type=str, default='VGG19', help='CNN architecture')
 parser.add_argument('--dataset', type=str, default='BFW', help='CNN architecture')
-parser.add_argument('--bs', default=128, type=int, help='batch size')
+parser.add_argument('--bs', default=64, type=int, help='batch size')
 parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 opt = parser.parse_args()
 
 use_cuda = torch.cuda.is_available()
-best_Test_acc = 0  # best Test accuracy
-best_Test_acc_epoch = 0
+best_test_acc = 0  # best Test accuracy
+best_test_acc_epoch = 0
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
-learning_rate_decay_start = 50  # 50
+learning_rate_decay_start = 20  # 50
 learning_rate_decay_every = 5  # 5
 learning_rate_decay_rate = 0.9  # 0.9
 
-total_epoch = 10
+total_epoch = 50
 
 path = os.path.join(opt.dataset + '_' + opt.model)
 
 # Data
 print('==> Preparing data..')
 transform_train = transforms.Compose([
-    transforms.Resize((108, 124)),  # 调整图片大小为 108x124
+    transforms.Resize((108, 124)),
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
 ])
-transform_test = transforms.Compose([
-    transforms.Lambda(lambda img: torch.stack([transforms.ToTensor()(img)])),
-])
+# transform_test = transforms.Compose([
+#     transforms.Lambda(lambda img: torch.stack([transforms.ToTensor()(img)])),
+# ])
+transform_test = transforms.Compose(
+    [
+        transforms.TenCrop(108), # 从108*124裁剪为108*108
+        transforms.Lambda(lambda crops: torch.stack([transforms.ToTensor()(crop) for crop in crops]))
+    ]
+)
 
 trainset = BFW(split='Training', transform=transform_train)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=opt.bs, shuffle=True, num_workers=0)
@@ -54,8 +61,13 @@ Testloader = torch.utils.data.DataLoader(Testset, batch_size=opt.bs, shuffle=Fal
 # Model
 if opt.model == 'VGG19':
     net = VGG('VGG19')
+    print('==> Using VGG19 model..')
 elif opt.model == 'Resnet18':
     net = ResNet18()
+    print('==> Using ResNet18 model..')
+elif opt.model == 'Resnet34':
+    net = ResNet18()
+    print('==> Using ResNet34 model..')
 
 if opt.resume:
     # Load checkpoint.
@@ -64,9 +76,9 @@ if opt.resume:
     checkpoint = torch.load(os.path.join(path, 'Test_model.t7'))
 
     net.load_state_dict(checkpoint['net'])
-    best_Test_acc = checkpoint['best_Test_acc']
-    best_Test_acc_epoch = checkpoint['best_Test_acc_epoch']
-    start_epoch = checkpoint['best_Test_acc_epoch'] + 1
+    best_test_acc = checkpoint['Best_test_acc']
+    best_test_acc_epoch = checkpoint['Best_test_acc_epoch']
+    start_epoch = checkpoint['Best_test_acc_epoch'] + 1
 else:
     print('==> Building model..')
 
@@ -79,12 +91,16 @@ else:
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=opt.lr, momentum=0.9, weight_decay=5e-4)
 
-filename = time.strftime("%m-%d-%H-%M-%S", time.localtime())
-log_path = f"{local_path}/3/{filename}.txt"
+dallas_tz = pytz.timezone('America/Chicago')
+local_time = time.localtime()
+dallas_time = datetime.fromtimestamp(time.mktime(local_time), tz=pytz.utc).astimezone(dallas_tz)
+filename = dallas_time.strftime("%m-%d-%H-%M-%S")
+log_path = f"{local_path}/3/output/{filename}.txt"
+
 outputfile = open(log_path, 'w')
 
-Loss_list = []
-Train_acc_list = []
+loss_list = []
+train_acc_list = []
 
 
 # Training
@@ -107,7 +123,13 @@ def train(epoch):
         current_lr = opt.lr
     print('learning_rate: %s' % str(current_lr))
 
-    for batch_idx, (inputs, targets) in enumerate(tqdm(trainloader)):
+    total_batches = len(trainloader)
+
+    progress_bar = tqdm(range(total_batches // 100))
+
+    for batch_idx, (inputs, targets) in enumerate(trainloader):
+        if batch_idx % 100 == 0:
+            progress_bar.update()
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
         optimizer.zero_grad()
@@ -122,26 +144,28 @@ def train(epoch):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum()
 
-        if batch_idx % 25 == 0:
+        if batch_idx % 100 == 0:
             print("Loss:", "{:.4e}".format(loss))
-            print(f"Correct_cnt: {correct}")
             print("Loss:", "{:.4e}".format(loss), file=outputfile)
-            print(f"Correct_cnt: {correct}", file=outputfile)
         outputfile.flush()
         utils.progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
                            % (train_loss / (batch_idx + 1), 100. * correct / total, correct, total))
-    Train_acc = 100. * correct / total
+
+    train_acc = 100. * correct / total
+    print("Train_acc: %0.3f" % train_acc, file=outputfile)
+    loss_list.append(train_loss)
+    train_acc_list.append(train_acc)
 
 
-Test_acc_list = []
+test_acc_list = []
 
 
 def test(epoch):
-    global Test_acc
-    global best_Test_acc
-    global best_Test_acc_epoch
+    global test_acc
+    global best_test_acc
+    global best_test_acc_epoch
     net.eval()
-    Test_loss = 0
+    test_loss = 0
     correct = 0
     total = 0
     for batch_idx, (inputs, targets) in enumerate(Testloader):
@@ -154,29 +178,30 @@ def test(epoch):
         outputs = net(inputs)
         outputs_avg = outputs.view(bs, ncrops, -1).mean(1)  # avg over crops
         loss = criterion(outputs_avg, targets)
-        Test_loss += loss.item()
+        test_loss += loss.item()
         _, predicted = torch.max(outputs_avg.data, 1)
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum()
 
         utils.progress_bar(batch_idx, len(Testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-                           % (Test_loss / (batch_idx + 1), 100. * correct / total, correct, total))
+                           % (test_loss / (batch_idx + 1), 100. * correct / total, correct, total))
     # Save checkpoint.
-    Test_acc = 100. * correct / total
+    test_acc = 100. * correct / total
+    test_acc_list.append(test_acc)
 
-    if Test_acc > best_Test_acc:
-        print('Saving..')
-        print("best_Test_acc: %0.3f" % Test_acc)
+    if test_acc > best_test_acc:
+        print("Best_test_acc: %0.3f" % test_acc, file=outputfile)
+
         state = {
             'net': net.state_dict() if use_cuda else net,
-            'best_Test_acc': Test_acc,
-            'best_Test_acc_epoch': epoch,
+            'Best_test_acc': test_acc,
+            'Best_test_acc_epoch': epoch,
         }
         if not os.path.isdir(path):
             os.mkdir(path)
         torch.save(state, os.path.join(path, 'Test_model.t7'))
-        best_Test_acc = Test_acc
-        best_Test_acc_epoch = epoch
+        best_test_acc = test_acc
+        best_test_acc_epoch = epoch
 
 
 for epoch in range(start_epoch, total_epoch):
@@ -186,39 +211,29 @@ for epoch in range(start_epoch, total_epoch):
 """
 ------------------ plot figures --------------------
 """
-x1 = range(0, 10)
-y1 = Train_acc_list
-print(y1)
-print(y1, file=outputfile)
-plt.plot(x1, y1, '-')
-plt.title('Train_acc vs. epoches')
-plt.ylabel('Train_acc')
-plt.plot(x1, y1, color='blue', label='Train_acc')
-plt.savefig(f"{local_path}/3/output/Train-acc-{filename}.png")
+x = range(0, 50)
+print(train_acc_list, file=outputfile)
+print(test_acc_list, file=outputfile)
 
-x2 = range(0, 10)
-y2 = Loss_list
-print(y2)
-plt.plot(x2, y2, '-')
+plt.plot(x, train_acc_list, color='blue', label='Train_acc')
+plt.plot(x, test_acc_list, color='orange', label='Test_acc')
+plt.title('Accuracy vs. Epochs')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend(loc='upper left')
+plt.savefig(f"{local_path}/3/output/Accuracy-{filename}.png")
+plt.show()
+
+y3 = loss_list
+plt.plot(x, y3, '-')
 plt.title('Train_loss vs. epoches')
 plt.xlabel('Epoch')
 plt.ylabel('Train_loss')
-plt.plot(x2, y2, color='blue')
-plt.savefig(f"{local_path}/3/output/Train-loss-{filename}s.png")
-
-x3 = range(0, 10)
-y3 = Test_acc_list
-print(y3)
-print(y3, file=outputfile)
-plt.plot(x3, y3, '-')
-plt.title('Test_acc vs. epoches')
-plt.xlabel('Epoch')
-plt.ylabel('Test_acc')
-plt.plot(x3, y3, color='orange', label='Private_acc')
-plt.legend(loc='lower right')
-plt.savefig(f"{local_path}/3/output/Test-acc-{filename}.png")
+plt.plot(x, y3, color='blue')
+plt.savefig(f"{local_path}/3/output/Train-loss-{filename}.png")
 plt.close()
 
 outputfile.close()
-print("best_Test_acc: %0.3f" % best_Test_acc)
-print("best_Test_acc_epoch: %d" % best_Test_acc_epoch)
+
+print("Best_test_acc: %0.3f" % best_test_acc)
+print("Best_test_acc_epoch: %d" % best_test_acc_epoch)
